@@ -3,14 +3,34 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"net"
+
+	"github.com/spf13/cobra"
 )
+
+var cli = &cobra.Command{
+	Use:   "server",
+	Short: "A simple TCP server",
+	Long:  "A simple TCP server to manage processes",
+	Run:   serve,
+}
+
+func init() {
+	cli.PersistentFlags().IntP("port", "p", 8421, "Port to listen on")
+}
 
 func main() {
 	log.SetPrefix("PM: ")
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
+	if err := cli.Execute(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func serve(cmd *cobra.Command, args []string) {
 	listener, err := net.Listen("tcp", ":8421")
 	if err != nil {
 		log.Fatal(err)
@@ -40,6 +60,10 @@ func handleConnection(conn net.Conn) {
 	for {
 		msg, err := reader.ReadString('\n')
 		if err != nil {
+			if err == io.EOF {
+				log.Println("Connection closed by peer")
+				break
+			}
 			log.Println("Error reading data from connection", err)
 			break
 		}
